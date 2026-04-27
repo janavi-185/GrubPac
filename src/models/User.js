@@ -19,16 +19,18 @@ const User = sequelize.define('User', {
       isEmail: true,
     },
   },
-  password: {
+  password_hash: {
     type: DataTypes.STRING,
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('TEACHER', 'PRINCIPAL'),
+    type: DataTypes.ENUM('PRINCIPAL', 'TEACHER'),
     defaultValue: 'TEACHER',
   },
 }, {
-  timestamps: true,
+  timestamps: true, // This automatically creates createdAt and updatedAt
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
 });
 
 module.exports = User;

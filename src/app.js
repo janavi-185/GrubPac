@@ -4,9 +4,13 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/Swagger");
 const cors = require('cors')
 const authRoutes = require('./routes/auth.routes')
-
+const contentRoutes = require('./routes/content.routes')
+const path = require('path')
 
 const app = express()
+
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -29,8 +33,10 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes)
+app.use('/api/content', contentRoutes)
 
 // Error handling middleware for Malformed JSON
+
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ message: 'Invalid JSON format in request body' });

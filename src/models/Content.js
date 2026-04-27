@@ -12,26 +12,42 @@ const Content = sequelize.define('Content', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   subject: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  fileUrl: {
+  file_url: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  file_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  file_size: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   },
   status: {
     type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'),
     defaultValue: 'PENDING',
   },
-  uploaderId: {
+  rejection_reason: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  uploaded_by: {
     type: DataTypes.UUID,
     references: {
       model: User,
       key: 'id',
     },
   },
-  approvedBy: {
+  approved_by: {
     type: DataTypes.UUID,
     references: {
       model: User,
@@ -39,19 +55,21 @@ const Content = sequelize.define('Content', {
     },
     allowNull: true,
   },
-  scheduledAt: {
+  approved_at: {
     type: DataTypes.DATE,
     allowNull: true,
   },
 }, {
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
 });
 
 // Relationships
-User.hasMany(Content, { foreignKey: 'uploaderId', as: 'uploadedContent' });
-Content.belongsTo(User, { foreignKey: 'uploaderId', as: 'uploader' });
+User.hasMany(Content, { foreignKey: 'uploaded_by', as: 'uploadedContent' });
+Content.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 
-User.hasMany(Content, { foreignKey: 'approvedBy', as: 'approvedContent' });
-Content.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver' });
+User.hasMany(Content, { foreignKey: 'approved_by', as: 'approvedContent' });
+Content.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 
 module.exports = Content;
