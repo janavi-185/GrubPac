@@ -2,6 +2,10 @@
 
 A backend API for educational content distribution — teachers upload subject-based content, the principal reviews and approves it, and students access live rotating content via a public API.
 
+🌐 **Live API:** https://syncro-sb09.onrender.com
+
+📖 **API Docs (Swagger):** https://syncro-sb09.onrender.com/api-docs
+
 ---
 
 ## 🛠️ Tech Stack
