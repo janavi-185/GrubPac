@@ -1,127 +1,67 @@
-const Content = require('../models/Content');
-const User = require('../models/User');
-
-// --- Teacher Flow ---
+const contentService = require('../services/content.service');
+const { successResponse, errorResponse, paginatedResponse } = require('../utils/response');
 
 const uploadContent = async (req, res) => {
   try {
-    const { title, subject, description } = req.body;
-    
     if (!req.file) {
-      return res.status(400).json({ message: 'Please upload a file' });
+      return errorResponse(res, 'File is required', 400);
     }
-
-    const content = await Content.create({
+    const { title, subject, description, start_time, end_time, rotation_duration } = req.body;
+    const content = await contentService.uploadContent({
       title,
-      description,
       subject,
+      description,
       file_url: req.file.path,
       file_type: req.file.mimetype,
       file_size: req.file.size,
-      uploaded_by: req.user.id,
-      status: 'PENDING'
+      start_time,
+      end_time,
+      rotation_duration,
+      uploaderId: req.user.id,
     });
-
-    res.status(201).json({
-      message: 'Content uploaded successfully and is pending approval',
-      content
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return successResponse(res, content, 'Content uploaded and pending approval', 201);
+  } catch (err) {
+    contentService.deleteUploadedFile(req.file?.path);
+    return errorResponse(res, err.message, err.status || 500);
   }
 };
 
 const getTeacherContent = async (req, res) => {
   try {
-    const content = await Content.findAll({
-      where: { uploaded_by: req.user.id },
-      order: [['created_at', 'DESC']]
-    });
-    res.status(200).json(content);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const { page = 1, limit = 10, subject } = req.query;
+    const { rows, total } = await contentService.getTeacherContent(req.user.id, { page, limit, subject });
+    return paginatedResponse(res, rows, total, page, limit);
+  } catch (err) {
+    return errorResponse(res, err.message, err.status || 500);
   }
 };
-
-// --- Principal Flow ---
 
 const getAllContent = async (req, res) => {
   try {
-    const content = await Content.findAll({
-      include: [{ model: User, as: 'uploader', attributes: ['name', 'email'] }],
-      order: [['created_at', 'DESC']]
-    });
-    res.status(200).json(content);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const { page = 1, limit = 10, subject, teacher_id } = req.query;
+    const { rows, total } = await contentService.getAllContent({ page, limit, subject, teacher_id });
+    return paginatedResponse(res, rows, total, page, limit);
+  } catch (err) {
+    return errorResponse(res, err.message, err.status || 500);
   }
 };
 
-const getPendingContent = async (req, res) => {
+const getContentById = async (req, res) => {
   try {
-    const content = await Content.findAll({
-      where: { status: 'PENDING' },
-      include: [{ model: User, as: 'uploader', attributes: ['name', 'email'] }],
-      order: [['created_at', 'ASC']]
-    });
-    res.status(200).json(content);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const content = await contentService.getContentById(req.params.id);
+    return successResponse(res, content);
+  } catch (err) {
+    return errorResponse(res, err.message, err.status || 500);
   }
 };
 
-const approveContent = async (req, res) => {
+const deleteContent = async (req, res) => {
   try {
-    const { id } = req.params;
-    const content = await Content.findByPk(id);
-
-    if (!content) {
-      return res.status(404).json({ message: 'Content not found' });
-    }
-
-    content.status = 'APPROVED';
-    content.approved_by = req.user.id;
-    content.approved_at = new Date();
-    content.rejection_reason = null;
-    await content.save();
-
-    res.status(200).json({ message: 'Content approved successfully', content });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    await contentService.deleteContent(req.params.id, req.user);
+    return successResponse(res, null, 'Content deleted successfully');
+  } catch (err) {
+    return errorResponse(res, err.message, err.status || 500);
   }
 };
 
-const rejectContent = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (!reason) {
-      return res.status(400).json({ message: 'Rejection reason is required' });
-    }
-
-    const content = await Content.findByPk(id);
-
-    if (!content) {
-      return res.status(404).json({ message: 'Content not found' });
-    }
-
-    content.status = 'REJECTED';
-    content.rejection_reason = reason;
-    await content.save();
-
-    res.status(200).json({ message: 'Content rejected', content });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-module.exports = {
-  uploadContent,
-  getTeacherContent,
-  getAllContent,
-  getPendingContent,
-  approveContent,
-  rejectContent,
-};
+module.exports = { uploadContent, getTeacherContent, getAllContent, getContentById, deleteContent };

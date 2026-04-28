@@ -1,0 +1,227 @@
+==========================================================
+CONTENT BROADCASTING SYSTEM - ARCHITECTURE NOTES
+==========================================================
+
+1. AUTHENTICATION & RBAC FLOW
+------------------------------
+- JWT (JSON Web Token) is used for stateless authentication.
+- On login, a signed JWT is returned containing: { id, email, role, name }
+- Token validity: 7 days (configurable via JWT_EXPIRES_IN)
+- Every protected route passes through the `authenticate` middleware which:
+    1. Extracts the Bearer token from the Authorization header
+    2. Verifies the token using JWT_SECRET
+    3. Attaches decoded user to req.user
+
+- The `authorize(...roles)` middleware is used for RBAC:
+    - `authorize('teacher')` → only teachers allowed
+    - `authorize('principal')` → only principals allowed
+    - Multiple roles can be passed: `authorize('teacher', 'principal')`
+
+Roles:
+  - principal: Can view ALL content, approve/reject pending content
+  - teacher:   Can upload content, view only their own content
+
+2. SUBJECT-BASED SYSTEM DESIGN
+-------------------------------
+- Each content item belongs to a subject (e.g., maths, science)
+- A `content_slots` table represents a unique (teacher_id, subject) pair
+- When a teacher uploads content:
+    1. A slot is found or created for that teacher+subject combination
+    2. A `content_schedule` entry is created, assigning a rotation_order
+- Subjects are stored lowercase for case-insensitive consistency
+- Each subject has an independent rotation cycle, enabling:
+    - Science content to rotate every 3 min
+    - Maths content to rotate every 5 min
+  ...simultaneously without interference
+
+3. UPLOAD HANDLING APPROACH
+----------------------------
+- Multer is used for multipart/form-data file handling
+- Files are validated:
+    - Allowed MIME types: image/jpeg, image/png, image/gif
+    - Allowed extensions: .jpg, .jpeg, .png, .gif
+    - Max size: 10MB (configurable via MAX_FILE_SIZE env var)
+- Files are stored locally in /uploads/ with UUID-based filenames
+  to prevent collisions and path traversal attacks
+- If DB insertion fails after upload, the physical file is deleted
+  to prevent orphaned files
+- file_url stores the full accessible URL; file_path stores the disk path
+- Bonus: S3 integration can be added by swapping Multer's storage engine
+  to multer-s3 without changing the controller/service layer
+
+4. APPROVAL WORKFLOW DESIGN
+----------------------------
+Content lifecycle: uploaded → pending → approved / rejected
+
+- When a teacher uploads content, status is automatically set to "pending"
+- Only the principal can call PATCH /api/approval/:id/review
+- Approval sets: status='approved', approved_by=principalId, approved_at=NOW()
+- Rejection sets: status='rejected', rejection_reason=<provided reason>
+- A piece of content can only be reviewed once (must be in 'pending' state)
+- Approved content is NOT immediately visible — it still requires a valid
+  time window (start_time/end_time) to appear in the live feed
+
+5. SCHEDULING / ROTATION LOGIC (CRITICAL)
+------------------------------------------
+This is the most important business logic in the system.
+
+Key Concepts:
+  - Each approved content has: start_time, end_time, rotation_duration (minutes)
+  - Content is "live" only if: status=approved AND NOW() is between start_time and end_time
+  - Multiple live content items per subject form a rotation pool
+
+Algorithm (per subject group):
+  Step 1: Fetch all approved, time-window-active content for the teacher
+  Step 2: Group by subject
+  Step 3: For each subject group:
+    a. Sort by rotation_order (assigned at upload time)
+    b. Find the "epoch" = earliest start_time in the group
+    c. Calculate total_cycle_ms = SUM of all rotation_durations * 60000
+    d. elapsed_ms = NOW() - epoch
+    e. position_in_cycle = elapsed_ms % total_cycle_ms
+    f. Walk through items, accumulating durations, until position_in_cycle
+       falls within the current item's slot → that item is ACTIVE
+
+This approach is:
+  - Deterministic: every student hitting the endpoint at the same second
+    sees the same content
+  - Stateless: no need to store "current pointer" in DB or Redis
+  - Looping: naturally loops via the modulo operation
+
+Time Remaining Calculation:
+  time_remaining_seconds = (slot_end_position - position_in_cycle) / 1000
+  This tells students exactly when the content will switch.
+
+6. DATABASE DESIGN DECISIONS
+-----------------------------
+ORM: Sequelize v6 (Code-First, Auto-Sync approach)
+Database: Neon DB (cloud-hosted PostgreSQL, accessible via connection string)
+
+Why Sequelize + Neon DB?
+  - No manual SQL migration scripts needed. Running the server automatically
+    creates or alters tables via `sequelize.sync({ alter: true })` in db.js.
+  - Neon DB is a serverless PostgreSQL provider, accessible from any machine
+    or live server using a single DATABASE_URL connection string.
+  - SSL is automatically enabled when DATABASE_URL is set (required by Neon).
+  - Falls back to local PostgreSQL credentials (DB_HOST, DB_USER, etc.)
+    if DATABASE_URL is not provided.
+
+Connection Logic (src/config/db.js):
+  - If DATABASE_URL exists → connect using the full string with SSL (Neon DB)
+  - If DATABASE_URL is absent → connect using individual DB_* env variables (local)
+
+Sequelize Models (src/models/):
+  - User.js          → users table (id, name, email, password_hash, role, timestamps)
+  - Content.js       → content table (all lifecycle columns, FKs to User)
+  - ContentSlot.js   → content_slots table (unique subject channels)
+  - ContentSchedule.js → content_schedule table (rotation_order, duration, FKs)
+
+All models use:
+  - DataTypes.UUID with UUIDV4 defaults as primary keys
+  - Sequelize associations (hasMany / belongsTo) to enforce FK relationships
+  - { createdAt: 'created_at', updatedAt: 'updated_at' } to match snake_case column names
+
+Why separate content_slots and content_schedule?
+  - Slots represent a "broadcast channel" for a subject
+  - Schedule represents the ordered playlist for that channel
+  - This separation allows future features like:
+    - Reordering content without touching the content table
+    - Multiple schedules per slot (A/B scheduling)
+
+UUIDs used as primary keys for:
+  - Security (non-guessable IDs in public API)
+  - Distributed system compatibility
+
+7. FOLDER STRUCTURE
+--------------------
+src/
+├── app.js                  → Express app setup, middleware, routes
+├── config/
+│   ├── db.js               → Sequelize instance + connectDB (supports Neon DB & Local)
+│   └── Swagger.js          → Swagger/OpenAPI spec configuration
+├── controllers/            → Request handlers
+│   ├── auth.controller.js
+│   ├── content.controller.js
+│   ├── approval.controller.js
+│   └── public.controller.js
+├── routes/                 → Express routers with Swagger JSDoc annotations
+│   ├── auth.routes.js
+│   ├── content.routes.js
+│   ├── approval.routes.js
+│   ├── public.routes.js
+│   └── user.routes.js
+├── services/               → Business logic layer
+│   ├── auth.service.js
+│   ├── content.service.js
+│   ├── approval.service.js
+│   └── scheduling.service.js   ← most critical
+├── middlewares/
+│   ├── auth.middleware.js   → JWT authentication + RBAC authorization
+│   ├── upload.middleware.js → Multer file upload + validation
+│   └── validate.middleware.js → Request body validation
+├── models/                 → Database query abstraction
+│   ├── user.model.js
+│   ├── content.model.js
+│   └── slot.model.js
+└── utils/
+    ├── response.js          → Consistent API response helpers
+    ├── migrate.js           → Database schema creation
+    └── seed.js              → Initial data seeding
+
+8. MIDDLEWARE USAGE
+--------------------
+Request pipeline for protected routes:
+  Request → cors → express.json → authenticate → authorize → validate → controller
+
+- cors: Allows cross-origin requests (configurable for production)
+- authenticate: Verifies JWT, populates req.user
+- authorize: Checks role against allowed roles
+- validate: Checks request body fields before hitting service layer
+- handleUploadError: Multer-specific error handling after file upload
+
+9. SCALABILITY APPROACH
+------------------------
+
+Current (MVP):
+  - Single process Node.js
+  - Neon DB (serverless cloud PostgreSQL via DATABASE_URL + SSL)
+  - Sequelize ORM with auto-sync (no manual migrations)
+  - Local file storage (/uploads folder)
+
+Short-term improvements:
+  a. Redis Caching
+     - Cache GET /content/live/:teacherId responses for 30 seconds
+     - Invalidate on approval or content upload
+     - Reduces DB queries for high-traffic public endpoint
+
+  b. Rate Limiting
+     - express-rate-limit on public endpoints (already implemented)
+     - Prevents abuse of the unauthenticated broadcasting endpoint
+
+  c. S3 File Storage
+     - Replace multer disk storage with multer-s3
+     - Files served from CDN edge nodes
+     - No local disk concerns in multi-server deployment
+
+Medium-term improvements:
+  d. Horizontal scaling
+     - Stateless JWT auth works across multiple instances
+     - Session state stored in DB/Redis, not in-process
+     - Load balancer routes public API traffic
+
+  e. Message Queue (Bull/RabbitMQ)
+     - File processing (image compression, thumbnail generation)
+     - Email notifications on approval/rejection
+     - Analytics event tracking
+
+  f. Read replicas
+     - Route GET queries to PostgreSQL read replicas
+     - Primary handles writes (upload, approve)
+
+  g. Pagination everywhere
+     - All list endpoints support page + limit
+     - Cursor-based pagination for high-volume tables
+
+==========================================================
+END OF ARCHITECTURE NOTES
+==========================================================

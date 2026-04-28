@@ -42,30 +42,33 @@ const Content = sequelize.define('Content', {
   },
   uploaded_by: {
     type: DataTypes.UUID,
-    references: {
-      model: User,
-      key: 'id',
-    },
+    allowNull: false,
+    references: { model: User, key: 'id' },
   },
   approved_by: {
     type: DataTypes.UUID,
-    references: {
-      model: User,
-      key: 'id',
-    },
     allowNull: true,
+    references: { model: User, key: 'id' },
   },
   approved_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  // Required for broadcast scheduling (not in minimum schema but needed for business logic)
+  start_time: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  end_time: {
     type: DataTypes.DATE,
     allowNull: true,
   },
 }, {
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at',
+  updatedAt: false,
 });
 
-// Relationships
 User.hasMany(Content, { foreignKey: 'uploaded_by', as: 'uploadedContent' });
 Content.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 

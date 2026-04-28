@@ -1,67 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
+const { protect } = require('../middlewares/auth.middleware');
+const { validateRegister, validateLogin } = require('../middlewares/validate.middleware');
 
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Register a new user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               role:
- *                 type: string
- *                 enum: [TEACHER, PRINCIPAL]
- *     responses:
- *       201:
- *         description: User registered successfully
- *       400:
- *         description: User already exists
- */
-router.post('/register', authController.register);
-
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Login user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login successful
- *       401:
- *         description: Invalid credentials
- */
-router.post('/login', authController.login);
+router.post('/register', validateRegister, authController.register);
+router.post('/login', validateLogin, authController.login);
+router.get('/me', protect, authController.getMe);
 
 module.exports = router;
