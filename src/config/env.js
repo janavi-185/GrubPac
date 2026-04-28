@@ -1,7 +1,7 @@
 try {
   require('dotenv').config();
 } catch (e) {
-  // dotenv not available — env vars already injected by the platform (Render, etc.)
+  
 }
 
 const getRequiredEnv = (key) => {

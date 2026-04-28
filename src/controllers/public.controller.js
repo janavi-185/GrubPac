@@ -17,7 +17,6 @@ const getLiveContent = async (req, res) => {
     const { subject } = req.query;
     const result = await schedulingService.getLiveContent(teacherId, subject);
 
-    // Fire-and-forget: log each active item as a view (non-blocking)
     if (result.available && result.subjects) {
       const entries = Object.values(result.subjects)
         .filter(s => s.current)

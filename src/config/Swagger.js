@@ -1,9 +1,7 @@
 const swaggerJSDoc = require('swagger-jsdoc');
 try { require('dotenv').config(); } catch (e) {}
 
-
 const SERVER_URL = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 4000}`;
-
 
 const options = {
   definition: {
@@ -19,7 +17,6 @@ const options = {
         description: process.env.SERVER_URL ? 'Production server' : 'Development server',
       },
     ],
-
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -86,37 +83,35 @@ const options = {
         description: 'Register and login. Open to all roles (Teacher & Principal). Returns a JWT token.',
       },
       {
-        name: 'Content — Teacher Only',
+        name: 'Content — Teacher',
         description: 'Upload new content, view your own uploads, delete your own content. Requires TEACHER role.',
       },
       {
-        name: 'Content — Principal Only',
+        name: 'Content — Principal',
         description: 'View all content across all teachers, filter by subject or teacher. Requires PRINCIPAL role.',
       },
       {
-        name: 'Approval — Principal Only',
-        description: 'Review pending content — approve or reject with a reason. Requires PRINCIPAL role.',
-      },
-      {
-        name: 'Users — Principal Only',
+        name: 'Users — Principal',
         description: 'List all teachers and fetch any user by ID. Requires PRINCIPAL role.',
       },
       {
-        name: 'Broadcast — Public (No Auth)',
+        name: 'Approval — Principal',
+        description: 'Review pending content — approve or reject with a reason. Requires PRINCIPAL role.',
+      },
+      {
+        name: 'Broadcast — Public',
         description: 'Student-facing live content API. No login required. Rate limited to 60 requests/min.',
       },
       {
-        name: 'Analytics — Principal Only',
+        name: 'Analytics — Principal',
         description: 'Subject-wise analytics and content usage tracking. Requires PRINCIPAL role.',
       },
     ],
-
     paths: {
-      // ─── AUTH ─────────────────────────────────────────────
       '/api/auth/register': {
         post: {
           summary: 'Register a new user',
-          tags: ['🔐 Auth — All Users'],
+          tags: ['Auth — All Users'],
           requestBody: {
             required: true,
             content: {
@@ -181,7 +176,7 @@ const options = {
       '/api/auth/me': {
         get: {
           summary: 'Get current logged-in user profile',
-          tags: ["Auth — All Users"],
+          tags: ['Auth — All Users'],
           security: [{ bearerAuth: [] }],
           responses: {
             200: {
@@ -196,12 +191,10 @@ const options = {
           },
         },
       },
-
-      // ─── CONTENT ───────────────────────────────────────────
       '/api/content/upload': {
         post: {
           summary: 'Upload content (Teacher only)',
-          tags: ['Content — Teacher Only'],
+          tags: ['Content — Teacher'],
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
@@ -233,7 +226,7 @@ const options = {
       '/api/content/my': {
         get: {
           summary: "Get teacher's own uploaded content",
-          tags: ['Content — Teacher Only'],
+          tags: ['Content — Teacher'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -249,7 +242,7 @@ const options = {
       '/api/content': {
         get: {
           summary: 'Get all content (Principal only)',
-          tags: ['Content — Principal Only'],
+          tags: ['Content — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -267,7 +260,7 @@ const options = {
       '/api/content/{id}': {
         get: {
           summary: 'Get content by ID',
-          tags: ['Content — Principal Only'],
+          tags: ['Content — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -279,7 +272,7 @@ const options = {
         },
         delete: {
           summary: 'Delete content (Teacher: own content | Principal: any content)',
-          tags: ['Content — Principal Only'],
+          tags: ['Content — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -291,12 +284,39 @@ const options = {
           },
         },
       },
-
-      // ─── APPROVAL ─────────────────────────────────────────
+      '/api/users/teachers': {
+        get: {
+          summary: 'Get all teachers (Principal only)',
+          tags: ['Users — Principal'],
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
+            { in: 'query', name: 'limit', schema: { type: 'integer', example: 10 } },
+          ],
+          responses: {
+            200: { description: 'Paginated list of all teachers' },
+            403: { description: 'Forbidden — Principals only' },
+          },
+        },
+      },
+      '/api/users/{id}': {
+        get: {
+          summary: 'Get a user by ID (Principal only)',
+          tags: ['Users — Principal'],
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'User details', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
+            404: { description: 'User not found' },
+          },
+        },
+      },
       '/api/approval/pending': {
         get: {
           summary: 'Get all pending content awaiting review (Principal only)',
-          tags: ['Approval — Principal Only'],
+          tags: ['Approval — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -311,7 +331,7 @@ const options = {
       '/api/approval/{id}/review': {
         patch: {
           summary: 'Approve or reject content (Principal only)',
-          tags: ['Approval — Principal Only'],
+          tags: ['Approval — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -338,42 +358,10 @@ const options = {
           },
         },
       },
-
-      // ─── USERS ────────────────────────────────────────────
-      '/api/users/teachers': {
-        get: {
-          summary: 'Get all teachers (Principal only)',
-          tags: ['Users — Principal Only'],
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
-            { in: 'query', name: 'limit', schema: { type: 'integer', example: 10 } },
-          ],
-          responses: {
-            200: { description: 'Paginated list of all teachers' },
-            403: { description: 'Forbidden — Principals only' },
-          },
-        },
-      },
-      '/api/users/{id}': {
-        get: {
-          summary: 'Get a user by ID (Principal only)',
-          tags: ['Users — Principal Only'],
-          security: [{ bearerAuth: [] }],
-          parameters: [
-            { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
-          ],
-          responses: {
-            200: { description: 'User details', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
-            404: { description: 'User not found' },
-          },
-        },
-      },
-
       '/api/broadcast/teachers': {
         get: {
           summary: 'Get all teachers currently broadcasting live content',
-          tags: ['Broadcast — Public (No Auth)'],
+          tags: ['Broadcast — Public '],
           responses: {
             200: { description: 'List of active teachers' },
           },
@@ -383,7 +371,7 @@ const options = {
         get: {
           summary: 'Get live rotating content for a teacher',
           description: 'Returns the currently active content per subject, with time_remaining_seconds and active_until. Rate limited to 60 req/min.',
-          tags: ['Broadcast — Public (No Auth)'],
+          tags: ['Broadcast — Public'],
           parameters: [
             { in: 'path', name: 'teacherId', required: true, schema: { type: 'string', format: 'uuid' } },
             { in: 'query', name: 'subject', schema: { type: 'string', example: 'maths' }, description: 'Filter by subject' },
@@ -398,7 +386,7 @@ const options = {
         get: {
           summary: 'Get subjects ranked by view count (most active subject)',
           description: 'Returns all subjects with total_views, unique_content_viewed, and total_approved_content. Sorted by most views.',
-          tags: ['Analytics — Principal Only'],
+          tags: ['Analytics — Principal'],
           security: [{ bearerAuth: [] }],
           responses: {
             200: { description: 'Subject analytics data' },
@@ -410,7 +398,7 @@ const options = {
         get: {
           summary: 'Get per-content view counts with filters',
           description: 'Returns each content item with its view_count. Supports full filtering by subject, teacher, and status.',
-          tags: ['Analytics — Principal Only'],
+          tags: ['Analytics — Principal'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },

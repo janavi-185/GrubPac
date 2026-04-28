@@ -10,7 +10,7 @@ const ContentSlot = sequelize.define('ContentSlot', {
   subject: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true, // Assuming one slot per subject
+    unique: true, 
   },
 }, {
   timestamps: true,

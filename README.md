@@ -6,6 +6,8 @@ A backend API for educational content distribution — teachers upload subject-b
 
 📖 **API Docs (Swagger):** https://syncro-sb09.onrender.com/api-docs
 
+🖥️ **Frontend UI:** https://grubpac.vercel.app
+
 ---
 
 ## 🛠️ Tech Stack
@@ -380,12 +382,25 @@ Applied to `/api/broadcast/*` (public endpoints only):
 
 ## 📝 Assumptions & Notes
 
-1. `duration` per content item comes from `ContentSchedule.duration` (minutes)
-2. `start_time`/`end_time` on Content are required for it to appear live — content without them is never shown
-3. Subjects are normalized to lowercase on upload
-4. The rotation epoch is the earliest `start_time` across the subject group
-5. `ContentSlot` is auto-created per subject on first upload (one slot per subject)
-6. `rotation_order` in `ContentSchedule` is auto-assigned as the next available integer per slot
+1. **Content model** — `start_time` and `end_time` are optional fields but required for a content item to appear in the live broadcast. Content without a valid schedule window is silently skipped by the rotation logic.
+2. **Subject field** — stored as-is but compared case-insensitively; `"Maths"` and `"maths"` resolve to the same broadcast slot per teacher.
+3. **ContentViews model** — the `ContentViews` table is auto-created by Sequelize `sync()` on first server start; no manual migration or seed script is needed.
+
+
+<!-- ---
+
+## ⚠️ Skipped / Out of Scope Features
+
+| Feature | Status | Reason |
+|---|---|---|
+| Real-time WebSocket push | ❌ Skipped | Not required; students poll `/api/broadcast/:teacherId` |
+| File content preview in UI | ❌ Skipped | UI links to the raw file URL; rendering varies by file type |
+| Forgot password / reset | ❌ Skipped | Not in assignment scope |
+| Student accounts / login | ❌ Skipped | Broadcast endpoint is intentionally public (no token needed) |
+| Mobile-responsive sidebar | ⚠️ Partial | Sidebar hides on screens < 768px; no hamburger menu yet |
+| Principal editing content | ❌ Skipped | Principal can only approve/reject/delete, not edit teacher content |
+| Multi-file upload per item | ❌ Skipped | One file per content item by design |
+| Notification system | ❌ Skipped | Teachers check rejection reason by viewing their content list | -->
 
 ---
 
@@ -408,7 +423,9 @@ open http://localhost:4000/api-docs
 pnpm run db:seed
 ```
 
-## 🚀 Deployment (Render)
+## 🚀 Deployment
+
+### Backend (Render)
 
 | Field          | Value            |
 | -------------- | ---------------- |
@@ -416,9 +433,30 @@ pnpm run db:seed
 | Start Command  | `node server.js` |
 | Root Directory | _(leave blank)_  |
 
-Set these environment variables in Render's dashboard:
+Environment variables to set in Render dashboard:
 
-- `DATABASE_URL` — Neon DB connection string
-- `JWT_SECRET` — your secret key
-- `NODE_ENV` — `production`
-- `SERVER_URL` — your Render app URL (e.g., `https://your-app.onrender.com`)
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET` | Secret key for JWT signing |
+| `JWT_EXPIRES_IN` | Token expiry e.g. `14d` |
+| `NODE_ENV` | `production` |
+| `SERVER_URL` | `https://syncro-sb09.onrender.com` |
+| `ALLOWED_EMAIL_DOMAIN` | e.g. `adaniuni.ac.in` |
+| `CLIENT_URL` | Your Vercel frontend URL (for CORS) |
+
+### Frontend (Vercel)
+
+| Field | Value |
+|---|---|
+| Root Directory | `client` |
+| Framework | Vite |
+| Install Command | `pnpm install --ignore-workspace` |
+| Build Command | `pnpm run build` |
+| Output Directory | `dist` |
+
+Environment variable to set in Vercel dashboard:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_BASE_URL` | `https://syncro-sb09.onrender.com` |

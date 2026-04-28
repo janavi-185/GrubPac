@@ -1,8 +1,5 @@
 const { errorResponse } = require('../utils/response');
 
-/**
- * Validate required fields for user registration
- */
 const validateRegister = (req, res, next) => {
   const { name, email, password, role } = req.body;
 
@@ -38,9 +35,6 @@ const validateLogin = (req, res, next) => {
   next();
 };
 
-/**
- * Validate required fields for content upload
- */
 const validateUpload = (req, res, next) => {
   const { title, subject } = req.body;
 
@@ -52,7 +46,6 @@ const validateUpload = (req, res, next) => {
     return errorResponse(res, 'Title must be at least 3 characters long', 400);
   }
 
-  // Normalize subject to lowercase
   if (req.body.subject) {
     req.body.subject = req.body.subject.toLowerCase().trim();
   }
@@ -60,9 +53,6 @@ const validateUpload = (req, res, next) => {
   next();
 };
 
-/**
- * Validate fields for approval review action
- */
 const validateReview = (req, res, next) => {
   const { action, rejection_reason } = req.body;
 
@@ -75,7 +65,6 @@ const validateReview = (req, res, next) => {
     return errorResponse(res, 'rejection_reason is required when action is "reject"', 400);
   }
 
-  // Normalize action to lowercase
   req.body.action = action.toLowerCase();
 
   next();

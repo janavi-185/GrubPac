@@ -54,11 +54,11 @@ const Content = sequelize.define('Content', {
     type: DataTypes.DATE,
     allowNull: true,
   },
-  // Required for broadcast scheduling (not in minimum schema but needed for business logic)
   start_time: {
     type: DataTypes.DATE,
     allowNull: true,
   },
+
   end_time: {
     type: DataTypes.DATE,
     allowNull: true,
@@ -75,10 +75,10 @@ Content.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 User.hasMany(Content, { foreignKey: 'approved_by', as: 'approvedContent' });
 Content.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 
-// Lazy-require to avoid circular dependency
 const ContentView = require('./ContentView');
 Content.hasMany(ContentView, { foreignKey: 'content_id', as: 'views' });
 ContentView.belongsTo(Content, { foreignKey: 'content_id', as: 'content' });
+
 
 module.exports = Content;
 

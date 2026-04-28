@@ -4,12 +4,7 @@ const Content = require('../models/Content');
 const ContentView = require('../models/ContentView');
 const User = require('../models/User');
 
-/**
- * Returns subjects ranked by total view count.
- * Uses Sequelize fn/col aggregation — no raw SQL.
- */
 const getSubjectAnalytics = async () => {
-  // View counts grouped by subject
   const viewStats = await ContentView.findAll({
     attributes: [
       'subject',
@@ -21,7 +16,6 @@ const getSubjectAnalytics = async () => {
     raw: true,
   });
 
-  // Approved content count per subject
   const contentStats = await Content.findAll({
     attributes: [
       'subject',
@@ -32,7 +26,6 @@ const getSubjectAnalytics = async () => {
     raw: true,
   });
 
-  // Merge both result sets by subject
   const subjectMap = {};
 
   contentStats.forEach(row => {
@@ -60,10 +53,6 @@ const getSubjectAnalytics = async () => {
   return Object.values(subjectMap).sort((a, b) => b.total_views - a.total_views);
 };
 
-/**
- * Returns per-content view counts with full filters.
- * Uses Sequelize LEFT JOIN via hasMany association — no raw SQL.
- */
 const getContentUsage = async ({ page = 1, limit = 10, subject, teacher_id, status } = {}) => {
   const where = {};
   if (subject) where.subject = subject.toLowerCase();
@@ -85,9 +74,10 @@ const getContentUsage = async ({ page = 1, limit = 10, subject, teacher_id, stat
       {
         model: ContentView,
         as: 'views',
-        attributes: [],       // don't pull any columns — just for the COUNT
-        required: false,      // LEFT JOIN (include content with 0 views too)
+        attributes: [],
+        required: false,
       },
+
       {
         model: User,
         as: 'uploader',
@@ -99,10 +89,9 @@ const getContentUsage = async ({ page = 1, limit = 10, subject, teacher_id, stat
     order: [[sequelize.fn('COUNT', sequelize.col('views.id')), 'DESC']],
     limit: Number(limit),
     offset,
-    subQuery: false,          // required for correct pagination with GROUP BY
-  });
+    subQuery: false,
 
-  // Separate count query (findAndCountAll is unreliable with GROUP BY)
+  });
   const total = await Content.count({ where });
 
   return {

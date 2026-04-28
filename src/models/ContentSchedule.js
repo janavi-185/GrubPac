@@ -28,7 +28,7 @@ const ContentSchedule = sequelize.define('ContentSchedule', {
     defaultValue: 1,
   },
   duration: {
-    type: DataTypes.INTEGER, // in minutes
+    type: DataTypes.INTEGER, 
     defaultValue: 5,
   },
 }, {

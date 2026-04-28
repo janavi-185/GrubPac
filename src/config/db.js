@@ -6,12 +6,11 @@ let sequelize;
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (DATABASE_URL) {
-  // Strip sslmode/channel_binding from the URL — let dialectOptions handle SSL explicitly
-  // to avoid pg-connection-string SSL deprecation warnings
   const cleanUrl = DATABASE_URL
     .replace(/[?&]sslmode=[^&]*/g, '')
     .replace(/[?&]channel_binding=[^&]*/g, '')
     .replace(/\?$/, '');
+
 
   sequelize = new Sequelize(cleanUrl, {
     dialect: 'postgres',

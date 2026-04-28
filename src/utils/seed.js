@@ -27,7 +27,7 @@ const SEED_USERS = [
 const seed = async () => {
   console.log('🌱 Starting database seeding...');
 
-  // Connect to the database and sync models
+  
   await connectDB();
 
   let created = 0;
