@@ -351,10 +351,30 @@ Applied to `/api/broadcast/*` (public endpoints only):
 
 - ✅ **Rate Limiting** on public broadcast API (60 req/min)
 - ✅ **Pagination** on all list endpoints (`?page=1&limit=10`)
-- ✅ **Subject filtering** (`?subject=maths`)
+- ✅ **Subject filtering** (`?subject=maths`) on content & analytics
 - ✅ **Teacher filtering** (`?teacher_id=<uuid>`) on principal's content view
-- ✅ **Swagger UI** with complete documentation and examples
+- ✅ **Status filtering** (`?status=PENDING|APPROVED|REJECTED`) on `GET /api/content`
+- ✅ **Subject-wise Analytics** — most active subjects ranked by view count (`GET /api/analytics/subjects`)
+- ✅ **Content Usage Tracking** — per-content view counts with full filters (`GET /api/analytics/content-usage`)
+- ✅ **Broadcast View Logging** — every `/api/broadcast` hit logs a `ContentView` record (non-blocking)
+- ✅ **Email Domain Restriction** — registration locked to `ALLOWED_EMAIL_DOMAIN` env var
+- ✅ **Swagger UI** with role-labelled groups and complete documentation
 - ✅ **File cleanup** on upload failure
+
+## 📊 Analytics Endpoints (Principal Only)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/analytics/subjects` | Subjects ranked by view count + approved content count |
+| GET | `/api/analytics/content-usage` | Per-content view count with filters: `subject`, `teacher_id`, `status`, `page`, `limit` |
+
+**Example response — `GET /api/analytics/subjects`:**
+```json
+[
+  { "subject": "maths",   "total_views": 142, "unique_content_viewed": 3, "total_approved_content": 4 },
+  { "subject": "science", "total_views": 87,  "unique_content_viewed": 2, "total_approved_content": 2 }
+]
+```
 
 ---
 

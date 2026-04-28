@@ -75,4 +75,10 @@ Content.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 User.hasMany(Content, { foreignKey: 'approved_by', as: 'approvedContent' });
 Content.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 
+// Lazy-require to avoid circular dependency
+const ContentView = require('./ContentView');
+Content.hasMany(ContentView, { foreignKey: 'content_id', as: 'views' });
+ContentView.belongsTo(Content, { foreignKey: 'content_id', as: 'content' });
+
 module.exports = Content;
+

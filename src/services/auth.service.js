@@ -3,12 +3,23 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const registerUser = async ({ name, email, password, role }) => {
+  const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN;
+  if (allowedDomain) {
+    const emailDomain = email.split('@')[1];
+    if (emailDomain !== allowedDomain) {
+      const err = new Error(`Registration is restricted to ${allowedDomain} email addresses only`);
+      err.status = 403;
+      throw err;
+    }
+  }
+
   const existing = await User.findOne({ where: { email } });
   if (existing) {
     const err = new Error('User with this email already exists');
     err.status = 400;
     throw err;
   }
+
 
   const password_hash = await bcrypt.hash(password, 10);
 

@@ -81,18 +81,42 @@ const options = {
       },
     },
     tags: [
-      { name: 'Auth', description: 'Authentication — register, login, get profile' },
-      { name: 'Content', description: 'Content upload and management (Teacher & Principal)' },
-      { name: 'Approval', description: 'Principal approval workflow' },
-      { name: 'Users', description: 'User management (Principal only)' },
-      { name: 'Public', description: 'Public broadcasting API — no authentication required' },
+      {
+        name: 'Auth — All Users',
+        description: 'Register and login. Open to all roles (Teacher & Principal). Returns a JWT token.',
+      },
+      {
+        name: 'Content — Teacher Only',
+        description: 'Upload new content, view your own uploads, delete your own content. Requires TEACHER role.',
+      },
+      {
+        name: 'Content — Principal Only',
+        description: 'View all content across all teachers, filter by subject or teacher. Requires PRINCIPAL role.',
+      },
+      {
+        name: 'Approval — Principal Only',
+        description: 'Review pending content — approve or reject with a reason. Requires PRINCIPAL role.',
+      },
+      {
+        name: 'Users — Principal Only',
+        description: 'List all teachers and fetch any user by ID. Requires PRINCIPAL role.',
+      },
+      {
+        name: 'Broadcast — Public (No Auth)',
+        description: 'Student-facing live content API. No login required. Rate limited to 60 requests/min.',
+      },
+      {
+        name: 'Analytics — Principal Only',
+        description: 'Subject-wise analytics and content usage tracking. Requires PRINCIPAL role.',
+      },
     ],
+
     paths: {
       // ─── AUTH ─────────────────────────────────────────────
       '/api/auth/register': {
         post: {
           summary: 'Register a new user',
-          tags: ['Auth'],
+          tags: ['🔐 Auth — All Users'],
           requestBody: {
             required: true,
             content: {
@@ -119,7 +143,7 @@ const options = {
       '/api/auth/login': {
         post: {
           summary: 'Login and receive JWT token',
-          tags: ['Auth'],
+          tags: ['Auth — All Users'],
           requestBody: {
             required: true,
             content: {
@@ -157,7 +181,7 @@ const options = {
       '/api/auth/me': {
         get: {
           summary: 'Get current logged-in user profile',
-          tags: ['Auth'],
+          tags: ["Auth — All Users"],
           security: [{ bearerAuth: [] }],
           responses: {
             200: {
@@ -177,7 +201,7 @@ const options = {
       '/api/content/upload': {
         post: {
           summary: 'Upload content (Teacher only)',
-          tags: ['Content'],
+          tags: ['Content — Teacher Only'],
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
@@ -209,7 +233,7 @@ const options = {
       '/api/content/my': {
         get: {
           summary: "Get teacher's own uploaded content",
-          tags: ['Content'],
+          tags: ['Content — Teacher Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -225,13 +249,14 @@ const options = {
       '/api/content': {
         get: {
           summary: 'Get all content (Principal only)',
-          tags: ['Content'],
+          tags: ['Content — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
             { in: 'query', name: 'limit', schema: { type: 'integer', example: 10 } },
             { in: 'query', name: 'subject', schema: { type: 'string', example: 'science' } },
             { in: 'query', name: 'teacher_id', schema: { type: 'string', format: 'uuid' } },
+            { in: 'query', name: 'status', schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED'], example: 'APPROVED' }, description: 'Filter by approval status' },
           ],
           responses: {
             200: { description: 'Paginated list of all content with uploader info' },
@@ -242,7 +267,7 @@ const options = {
       '/api/content/{id}': {
         get: {
           summary: 'Get content by ID',
-          tags: ['Content'],
+          tags: ['Content — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -253,8 +278,8 @@ const options = {
           },
         },
         delete: {
-          summary: 'Delete content (owner or Principal)',
-          tags: ['Content'],
+          summary: 'Delete content (Teacher: own content | Principal: any content)',
+          tags: ['Content — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -271,7 +296,7 @@ const options = {
       '/api/approval/pending': {
         get: {
           summary: 'Get all pending content awaiting review (Principal only)',
-          tags: ['Approval'],
+          tags: ['Approval — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -286,7 +311,7 @@ const options = {
       '/api/approval/{id}/review': {
         patch: {
           summary: 'Approve or reject content (Principal only)',
-          tags: ['Approval'],
+          tags: ['Approval — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -318,7 +343,7 @@ const options = {
       '/api/users/teachers': {
         get: {
           summary: 'Get all teachers (Principal only)',
-          tags: ['Users'],
+          tags: ['Users — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
@@ -333,7 +358,7 @@ const options = {
       '/api/users/{id}': {
         get: {
           summary: 'Get a user by ID (Principal only)',
-          tags: ['Users'],
+          tags: ['Users — Principal Only'],
           security: [{ bearerAuth: [] }],
           parameters: [
             { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -348,7 +373,7 @@ const options = {
       '/api/broadcast/teachers': {
         get: {
           summary: 'Get all teachers currently broadcasting live content',
-          tags: ['Public'],
+          tags: ['Broadcast — Public (No Auth)'],
           responses: {
             200: { description: 'List of active teachers' },
           },
@@ -358,7 +383,7 @@ const options = {
         get: {
           summary: 'Get live rotating content for a teacher',
           description: 'Returns the currently active content per subject, with time_remaining_seconds and active_until. Rate limited to 60 req/min.',
-          tags: ['Public'],
+          tags: ['Broadcast — Public (No Auth)'],
           parameters: [
             { in: 'path', name: 'teacherId', required: true, schema: { type: 'string', format: 'uuid' } },
             { in: 'query', name: 'subject', schema: { type: 'string', example: 'maths' }, description: 'Filter by subject' },
@@ -366,6 +391,37 @@ const options = {
           responses: {
             200: { description: 'Live content with rotation timing metadata' },
             429: { description: 'Too many requests — rate limit exceeded' },
+          },
+        },
+      },
+      '/api/analytics/subjects': {
+        get: {
+          summary: 'Get subjects ranked by view count (most active subject)',
+          description: 'Returns all subjects with total_views, unique_content_viewed, and total_approved_content. Sorted by most views.',
+          tags: ['Analytics — Principal Only'],
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: { description: 'Subject analytics data' },
+            403: { description: 'Forbidden — Principals only' },
+          },
+        },
+      },
+      '/api/analytics/content-usage': {
+        get: {
+          summary: 'Get per-content view counts with filters',
+          description: 'Returns each content item with its view_count. Supports full filtering by subject, teacher, and status.',
+          tags: ['Analytics — Principal Only'],
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { in: 'query', name: 'page', schema: { type: 'integer', example: 1 } },
+            { in: 'query', name: 'limit', schema: { type: 'integer', example: 10 } },
+            { in: 'query', name: 'subject', schema: { type: 'string', example: 'maths' } },
+            { in: 'query', name: 'teacher_id', schema: { type: 'string', format: 'uuid' } },
+            { in: 'query', name: 'status', schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED'], example: 'APPROVED' } },
+          ],
+          responses: {
+            200: { description: 'Paginated content usage data with view_count per item' },
+            403: { description: 'Forbidden — Principals only' },
           },
         },
       },

@@ -11,6 +11,8 @@ const contentRoutes = require('./routes/content.routes');
 const approvalRoutes = require('./routes/approval.routes');
 const publicRoutes = require('./routes/public.routes');
 const userRoutes = require('./routes/user.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
+
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.get('/', (req, res) => {
       approval: '/api/approval',
       broadcast: '/api/broadcast',
       users: '/api/users',
+      analytics: '/api/analytics',
+
     },
   });
 });
@@ -48,6 +52,8 @@ app.use('/api/content', contentRoutes);
 app.use('/api/approval', approvalRoutes);
 app.use('/api/broadcast', broadcastLimiter, publicRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
 
 // 404 handler
 app.use((req, res) => {

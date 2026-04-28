@@ -65,10 +65,11 @@ const getTeacherContent = async (uploaderId, { page = 1, limit = 10, subject } =
   return { rows, total: count };
 };
 
-const getAllContent = async ({ page = 1, limit = 10, subject, teacher_id } = {}) => {
+const getAllContent = async ({ page = 1, limit = 10, subject, teacher_id, status } = {}) => {
   const where = {};
   if (subject) where.subject = subject.toLowerCase();
   if (teacher_id) where.uploaded_by = teacher_id;
+  if (status) where.status = status.toUpperCase();
 
   const offset = (page - 1) * limit;
 
@@ -82,6 +83,7 @@ const getAllContent = async ({ page = 1, limit = 10, subject, teacher_id } = {})
 
   return { rows, total: count };
 };
+
 
 const getContentById = async (id) => {
   const content = await Content.findByPk(id, {

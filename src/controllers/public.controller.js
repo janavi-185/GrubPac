@@ -1,4 +1,5 @@
 const schedulingService = require('../services/scheduling.service');
+const ContentView = require('../models/ContentView');
 const { successResponse, errorResponse } = require('../utils/response');
 
 const getActiveTeachers = async (req, res) => {
@@ -15,6 +16,23 @@ const getLiveContent = async (req, res) => {
     const { teacherId } = req.params;
     const { subject } = req.query;
     const result = await schedulingService.getLiveContent(teacherId, subject);
+
+    // Fire-and-forget: log each active item as a view (non-blocking)
+    if (result.available && result.subjects) {
+      const entries = Object.values(result.subjects)
+        .filter(s => s.current)
+        .map(s => ({
+          content_id: s.current.id,
+          teacher_id: teacherId,
+          subject: s.current.subject,
+          viewed_at: new Date(),
+        }));
+
+      if (entries.length > 0) {
+        ContentView.bulkCreate(entries).catch(() => {});
+      }
+    }
+
     return successResponse(res, result, result.available ? 'Live content fetched' : 'No content available');
   } catch (err) {
     return errorResponse(res, err.message, err.status || 500);

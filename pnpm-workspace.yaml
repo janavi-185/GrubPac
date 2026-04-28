@@ -1,2 +1,5 @@
+ignoredBuiltDependencies:
+  - '@scarf/scarf'
+
 onlyBuiltDependencies:
   - bcrypt

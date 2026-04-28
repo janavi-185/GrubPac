@@ -38,13 +38,14 @@ const getTeacherContent = async (req, res) => {
 
 const getAllContent = async (req, res) => {
   try {
-    const { page = 1, limit = 10, subject, teacher_id } = req.query;
-    const { rows, total } = await contentService.getAllContent({ page, limit, subject, teacher_id });
+    const { page = 1, limit = 10, subject, teacher_id, status } = req.query;
+    const { rows, total } = await contentService.getAllContent({ page, limit, subject, teacher_id, status });
     return paginatedResponse(res, rows, total, page, limit);
   } catch (err) {
     return errorResponse(res, err.message, err.status || 500);
   }
 };
+
 
 const getContentById = async (req, res) => {
   try {
