@@ -30,7 +30,7 @@ const User = sequelize.define('User', {
     defaultValue: 'TEACHER',
   },
 }, {
-  timestamps: true, // This automatically creates createdAt and updatedAt
+  timestamps: true, 
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 });

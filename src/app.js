@@ -6,7 +6,6 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/Swagger');
 const { broadcastLimiter } = require('./utils/rateLimiter');
 
-
 const authRoutes = require('./routes/auth.routes');
 const contentRoutes = require('./routes/content.routes');
 const approvalRoutes = require('./routes/approval.routes');

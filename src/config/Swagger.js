@@ -344,7 +344,6 @@ const options = {
         },
       },
 
-      // ─── PUBLIC BROADCAST ─────────────────────────────────
       '/api/broadcast/teachers': {
         get: {
           summary: 'Get all teachers currently broadcasting live content',
