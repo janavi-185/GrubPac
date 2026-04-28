@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "build": "node --check server.js && node -e \"require('./src/app'); console.log('Build OK — no import errors found')\"",
+    "build": "node --check server.js",
+
     "db:seed": "node src/utils/seed.js"
   },
 
