@@ -6,15 +6,16 @@ A backend API for educational content distribution — teachers upload subject-b
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Node.js 18+ |
-| Framework | Express.js |
-| Database | PostgreSQL (Local or Neon DB) |
-| Auth | JWT + bcrypt |
-| File Upload | Multer |
-| API Docs | Swagger UI (swagger-jsdoc + swagger-ui-express) |
-| Rate Limiting | express-rate-limit |
+| Layer         | Technology                                      |
+| ------------- | ----------------------------------------------- |
+| Runtime       | Node.js 18+                                     |
+| Framework     | Express.js                                      |
+| ORM           | Sequelize                                       |
+| Database      | PostgreSQL via Neon DB                          |
+| Auth          | JWT + bcrypt                                    |
+| File Upload   | Multer                                          |
+| API Docs      | Swagger UI (swagger-jsdoc + swagger-ui-express) |
+| Rate Limiting | express-rate-limit                              |
 
 ---
 
@@ -22,22 +23,23 @@ A backend API for educational content distribution — teachers upload subject-b
 
 ```
 src/
-├── app.js                  # Entry point — Express setup, routes, middleware
+├── app.js
 ├── config/
-│   ├── database.js         # PostgreSQL connection pool
-│   └── swagger.js          # Swagger/OpenAPI configuration
-├── controllers/            # HTTP request handlers
+│   ├── db.js               # Sequelize + Neon DB connection
+│   ├── Swagger.js          # All Swagger/OpenAPI definitions
+│   └── env.js              # Environment variable loader
+├── controllers/
 │   ├── auth.controller.js
 │   ├── content.controller.js
 │   ├── approval.controller.js
 │   └── public.controller.js
-├── routes/                 # Express routers (with Swagger JSDoc)
+├── routes/
 │   ├── auth.routes.js
 │   ├── content.routes.js
 │   ├── approval.routes.js
 │   ├── public.routes.js
 │   └── user.routes.js
-├── services/               # Business logic
+├── services/
 │   ├── auth.service.js
 │   ├── content.service.js
 │   ├── approval.service.js
@@ -45,17 +47,19 @@ src/
 ├── middlewares/
 │   ├── auth.middleware.js
 │   ├── upload.middleware.js
-│   └── validate.middleware.js
-├── models/                 # Database query layer
-│   ├── user.model.js
-│   ├── content.model.js
-│   └── slot.model.js
+│   ├── validate.middleware.js
+│   └── rateLimit.middleware.js
+├── models/
+│   ├── User.js
+│   ├── Content.js
+│   ├── ContentSlot.js
+│   └── ContentSchedule.js
 └── utils/
-    ├── response.js         # Standardized API responses
-    ├── migrate.js          # DB schema creation
+    ├── response.js         # Standardized API response helpers
     └── seed.js             # Seed default users
 uploads/                    # Local file storage
-architecture-notes.txt      # Detailed system design notes
+server.js                   # Entry point
+Architecture notes.txt      # Detailed system design notes
 ```
 
 ---
@@ -63,89 +67,65 @@ architecture-notes.txt      # Detailed system design notes
 ## ⚙️ Setup Instructions
 
 ### Prerequisites
+
 - Node.js >= 18
-- PostgreSQL >= 14
-- npm or yarn
+- pnpm (`npm install -g pnpm`)
+- A [Neon DB](https://neon.tech) account (free tier works)
 
 ### 1. Clone & Install
 
 ```bash
 git clone <repo-url>
-cd content-broadcasting-system
-npm install
+cd backend-project
+pnpm install
 ```
 
 ### 2. Configure Environment
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
+Create a `.env` file in the root:
 
 ```env
 PORT=4000
 NODE_ENV=development
-
-# Option 1: Online Database (Recommended - e.g., Neon DB)
 DATABASE_URL=your_neon_db_connection_string
-
-# Option 2: Local Database
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=content_broadcasting_db
-DB_USER=postgres
-DB_PASS=your_password
-DB_DIALECT=postgres
-
-# JWT
-JWT_SECRET=your_super_secret_jwt_key_here_make_it_long
+JWT_SECRET=your_super_secret_jwt_key
 JWT_EXPIRES_IN=7d
-
-# File Upload
-MAX_FILE_SIZE=10485760   # 10MB in bytes
-UPLOAD_DIR=uploads
+SERVER_URL=http://localhost:4000
 ```
 
 ### 3. Database Setup
 
-**Option A: Neon DB (Recommended & Online)**
-You don't need to create a database locally. Just grab your `DATABASE_URL` connection string from your Neon DB dashboard and paste it into your `.env` file. Our code is pre-configured to automatically handle the required SSL connections for Neon DB.
+**No manual migration scripts are required.**
 
-**Option B: Local PostgreSQL**
-If you are using a local PostgreSQL instance, create the database first:
+This project uses Sequelize ORM with `sequelize.sync({ alter: true })`. When the server starts, it automatically connects to Neon DB and creates/updates all tables:
 
-```bash
-# In psql
-CREATE DATABASE content_broadcasting_db;
-```
+- `Users`
+- `Contents`
+- `ContentSlots`
+- `ContentSchedules`
 
-### 4. Run Migrations
-
-**No manual migration scripts are required!**
-This codebase uses Sequelize ORM with auto-sync capability (`sequelize.sync({ alter: true })`). When you start the server, it will automatically connect to your database and create or update all the necessary tables (Users, Content, ContentSlots, ContentSchedule).
-
-### 5. Seed Default Users (Optional)
+### 4. Seed Default Users (Optional)
 
 ```bash
-npm run db:seed
+pnpm run db:seed
 ```
 
 This creates:
-| Role | Email | Password |
-|------|-------|----------|
-| Principal | principal@school.com | principal123 |
-| Teacher 1 | teacher1@school.com | teacher123 |
-| Teacher 2 | teacher2@school.com | teacher123 |
 
-### 6. Start the Server
+| Role      | Email                | Password     |
+| --------- | -------------------- | ------------ |
+| Principal | principal@school.com | principal123 |
+| Teacher 1 | teacher1@school.com  | teacher123   |
+| Teacher 2 | teacher2@school.com  | teacher123   |
+
+### 5. Start the Server
 
 ```bash
 # Development (with auto-reload)
-npm run dev
+pnpm run dev
 
 # Production
-npm start
+pnpm start
 ```
 
 ---
@@ -155,12 +135,7 @@ npm start
 Once running, open Swagger UI at:
 
 ```
-http://localhost:3000/api-docs
-```
-
-Swagger JSON spec:
-```
-http://localhost:3000/api-docs.json
+http://localhost:4000/api-docs
 ```
 
 ---
@@ -182,38 +157,47 @@ In Swagger UI, click **Authorize** (🔒) and enter: `Bearer <token>`
 ## 📋 API Endpoints
 
 ### Auth
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/register` | ❌ | Register teacher or principal |
-| POST | `/api/auth/login` | ❌ | Login and get JWT |
-| GET | `/api/auth/me` | ✅ | Get current user profile |
 
-### Content (Teacher)
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| POST | `/api/content/upload` | Teacher | Upload content file |
-| GET | `/api/content/my` | Teacher | View own uploaded content |
-| GET | `/api/content` | Principal | View all content |
-| GET | `/api/content/:id` | Both | Get content by ID |
-| DELETE | `/api/content/:id` | Both | Delete content |
+| Method | Endpoint             | Auth | Description                   |
+| ------ | -------------------- | ---- | ----------------------------- |
+| POST   | `/api/auth/register` | ❌   | Register teacher or principal |
+| POST   | `/api/auth/login`    | ❌   | Login and get JWT             |
+| GET    | `/api/auth/me`       | ✅   | Get current user profile      |
+
+### Content
+
+| Method | Endpoint              | Role      | Description               |
+| ------ | --------------------- | --------- | ------------------------- |
+| POST   | `/api/content/upload` | TEACHER   | Upload content file       |
+| GET    | `/api/content/my`     | TEACHER   | View own uploaded content |
+| GET    | `/api/content`        | PRINCIPAL | View all content          |
+| GET    | `/api/content/:id`    | Both      | Get content by ID         |
+| DELETE | `/api/content/:id`    | Both      | Delete content            |
 
 ### Approval (Principal)
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/api/approval/pending` | Principal | View pending content |
-| PATCH | `/api/approval/:id/review` | Principal | Approve or reject content |
+
+| Method | Endpoint                   | Role      | Description               |
+| ------ | -------------------------- | --------- | ------------------------- |
+| GET    | `/api/approval/pending`    | PRINCIPAL | View pending content      |
+| PATCH  | `/api/approval/:id/review` | PRINCIPAL | Approve or reject content |
 
 ### Users (Principal)
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/api/users/teachers` | Principal | List all teachers |
-| GET | `/api/users/:id` | Principal | Get user by ID |
+
+| Method | Endpoint              | Role      | Description       |
+| ------ | --------------------- | --------- | ----------------- |
+| GET    | `/api/users/teachers` | PRINCIPAL | List all teachers |
+| GET    | `/api/users/:id`      | PRINCIPAL | Get user by ID    |
 
 ### Public (No Auth — Students)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/content/live/teachers` | ❌ | List all teachers |
-| GET | `/api/content/live/:teacherId` | ❌ | Get live content for teacher |
+
+| Method | Endpoint                    | Auth | Description                         |
+| ------ | --------------------------- | ---- | ----------------------------------- |
+| GET    | `/api/broadcast/teachers`   | ❌   | List all teachers with live content |
+| GET    | `/api/broadcast/:teacherId` | ❌   | Get live content for a teacher      |
+
+Query params on public endpoints:
+
+- `?subject=maths` — filter by subject
 
 ---
 
@@ -222,12 +206,13 @@ In Swagger UI, click **Authorize** (🔒) and enter: `Bearer <token>`
 ```
 Upload → PENDING → [Principal Review] → APPROVED / REJECTED
 
-APPROVED + within start_time/end_time → LIVE (shows in /content/live)
+APPROVED + within start_time/end_time → LIVE (shows in /api/broadcast)
 APPROVED + outside time window        → NOT shown
 REJECTED                              → rejection_reason visible to teacher
 ```
 
 ### Upload a File (multipart/form-data)
+
 ```http
 POST /api/content/upload
 Authorization: Bearer <teacher_token>
@@ -243,6 +228,7 @@ rotation_duration: 5
 ```
 
 ### Approve Content
+
 ```http
 PATCH /api/approval/<content_id>/review
 Authorization: Bearer <principal_token>
@@ -254,6 +240,7 @@ Content-Type: application/json
 ```
 
 ### Reject Content
+
 ```http
 PATCH /api/approval/<content_id>/review
 Authorization: Bearer <principal_token>
@@ -266,9 +253,10 @@ Content-Type: application/json
 ```
 
 ### Get Live Content (Students)
+
 ```http
-GET /api/content/live/<teacher_id>
-GET /api/content/live/<teacher_id>?subject=maths
+GET /api/broadcast/<teacher_id>
+GET /api/broadcast/<teacher_id>?subject=maths
 ```
 
 ---
@@ -277,112 +265,103 @@ GET /api/content/live/<teacher_id>?subject=maths
 
 The live content endpoint uses a **stateless, deterministic rotation algorithm**:
 
-1. Fetch all `approved` content for the teacher within their active time window
+1. Fetch all `APPROVED` content for the teacher within their active time window (`start_time ≤ NOW ≤ end_time`)
 2. Group by subject (each subject has its own independent rotation)
 3. For each subject group:
+   - Sort by `rotation_order` from `ContentSchedule`
    - Use the **earliest `start_time`** as the rotation **epoch**
-   - Calculate `total_cycle_ms = SUM(rotation_duration * 60000)` for all items
+   - Calculate `total_cycle_ms = SUM(duration * 60000)` for all items in the group
    - Calculate `position_in_cycle = (NOW - epoch) % total_cycle_ms`
-   - Walk the sorted items until the active one is found
+   - Walk the sorted items to find the currently active one
 
 **Example:**
+
 ```
 Maths rotation: [A: 5min] [B: 5min] [C: 5min] → 15min cycle
 
-At t=0min  → A is showing (time remaining: 5min)
-At t=7min  → B is showing (time remaining: 3min)
-At t=12min → C is showing (time remaining: 3min)
+At t=0min  → A is showing (time_remaining: 300s)
+At t=7min  → B is showing (time_remaining: 180s)
+At t=12min → C is showing (time_remaining: 180s)
 At t=15min → A is showing again (loop)
 ```
 
-The response includes:
-- `time_remaining_seconds` → how long the current content will show
-- `active_until` → exact UTC timestamp when content switches
-- `total_items_in_rotation` → how many items are in this subject's cycle
+Response includes:
+
+- `time_remaining_seconds` — how long current content will show
+- `active_until` — exact UTC timestamp when content switches
+- `total_items_in_rotation` — how many items are in this subject's cycle
 
 ---
 
 ## 🛡️ Edge Cases Handled
 
-| Case | Behavior |
-|------|----------|
-| No approved content | Returns `"No content available"` |
-| Approved but no time window set | Content NOT shown |
-| Content outside time window | Content NOT shown |
-| Invalid or unknown teacher ID | Returns `"No content available"` |
-| Invalid subject filter | Returns empty response |
-| File type not allowed | 400 error with details |
-| File exceeds 10MB | 400 error |
-| Approving already-approved content | 400 error |
-| Teacher accessing another teacher's content | 403 Forbidden |
+| Case                                       | Behavior                   |
+| ------------------------------------------ | -------------------------- |
+| No approved content                        | Returns `available: false` |
+| Content approved but no time window        | Content NOT shown          |
+| Content outside time window                | Content NOT shown          |
+| Invalid teacher ID                         | Returns `available: false` |
+| Rejecting without rejection_reason         | 400 error                  |
+| Approving already-reviewed content         | 400 error                  |
+| Teacher deleting another teacher's content | 403 Forbidden              |
+| File exceeds 10MB                          | 400 error                  |
 
 ---
 
 ## 📦 File Upload Rules
 
-| Property | Value |
-|----------|-------|
-| Allowed formats | JPG, PNG, GIF |
-| Max file size | 10MB |
-| Storage | Local disk (`/uploads` folder) |
-| Naming | UUID-based (prevents collisions) |
-| Served at | `http://localhost:3000/uploads/<filename>` |
+| Property      | Value                            |
+| ------------- | -------------------------------- |
+| Field name    | `file`                           |
+| Max file size | 10MB                             |
+| Storage       | Local disk (`/uploads` folder)   |
+| Naming        | UUID-based (prevents collisions) |
+| Served at     | `/uploads/<filename>`            |
 
 ---
 
 ## 🚦 Rate Limiting
 
-The public broadcasting endpoint is rate-limited:
+Applied to `/api/broadcast/*` (public endpoints only):
+
 - **60 requests per minute** per IP address
-- Returns `429 Too Many Requests` when exceeded
+- Returns `429 Too Many Requests` with `success: false` when exceeded
 
 ---
 
-## 🔧 Environment Variables Reference
+## 🔧 Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `4000` | Server port |
-| `NODE_ENV` | `development` | Environment |
-| `DATABASE_URL` | - | Full connection string (e.g., Neon DB). If set, overrides local DB settings. |
-| `DB_HOST` | `127.0.0.1` | Local PostgreSQL host |
-| `DB_PORT` | `5432` | Local PostgreSQL port |
-| `DB_NAME` | `postgres` | Database name |
-| `DB_USER` | `postgres` | Database user |
-| `DB_PASS` | - | Database password |
-| `DB_DIALECT`| `postgres`| Database dialect |
-| `JWT_SECRET` | - | Secret key for JWT signing |
-| `JWT_EXPIRES_IN` | `7d` | Token expiry |
-| `MAX_FILE_SIZE` | `10485760` | Max upload size (bytes) |
-| `UPLOAD_DIR` | `uploads` | Upload directory |
+| Variable         | Required                  | Description                               |
+| ---------------- | ------------------------- | ----------------------------------------- |
+| `PORT`           | No (default: 4000)        | Server port                               |
+| `NODE_ENV`       | No (default: development) | Environment                               |
+| `DATABASE_URL`   | **Yes**                   | Neon DB full connection string            |
+| `JWT_SECRET`     | **Yes**                   | Secret key for JWT signing                |
+| `JWT_EXPIRES_IN` | No (default: 7d)          | Token expiry                              |
+| `SERVER_URL`     | No                        | Public URL for Swagger (e.g., Render URL) |
+| `CLIENT_URL`     | No (default: \*)          | Frontend URL for CORS                     |
 
 ---
 
 ## 🎯 Bonus Features (Implemented)
 
-- ✅ **Rate Limiting** on public API (60 req/min)
+- ✅ **Rate Limiting** on public broadcast API (60 req/min)
 - ✅ **Pagination** on all list endpoints (`?page=1&limit=10`)
 - ✅ **Subject filtering** (`?subject=maths`)
-- ✅ **Teacher filtering** (`?teacher_id=<uuid>`)
+- ✅ **Teacher filtering** (`?teacher_id=<uuid>`) on principal's content view
 - ✅ **Swagger UI** with complete documentation and examples
 - ✅ **File cleanup** on upload failure
-
-## 🎯 Bonus Features (Not Implemented / Extension Points)
-
-- ⬜ **Redis Caching** — Cache `/content/live` responses (add `ioredis`, wrap SchedulingService)
-- ⬜ **S3 Storage** — Swap `multer.diskStorage` for `multer-s3`
-- ⬜ **Analytics** — Track content view counts per request
 
 ---
 
 ## 📝 Assumptions & Notes
 
-1. A teacher's `rotation_duration` applies per content item; items within the same subject share the cycle
-2. `start_time`/`end_time` are mandatory for content to ever appear live — content without them is never shown
-3. The rotation epoch is the earliest `start_time` across the subject group, ensuring consistent rotation for all students
-4. File type validation uses both MIME type and file extension to prevent spoofed files
-5. Subjects are stored as lowercase strings for case-insensitive matching
-6. The seeded principal account is the only account with approval rights by default
+1. `duration` per content item comes from `ContentSchedule.duration` (minutes)
+2. `start_time`/`end_time` on Content are required for it to appear live — content without them is never shown
+3. Subjects are normalized to lowercase on upload
+4. The rotation epoch is the earliest `start_time` across the subject group
+5. `ContentSlot` is auto-created per subject on first upload (one slot per subject)
+6. `rotation_order` in `ContentSchedule` is auto-assigned as the next available integer per slot
 
 ---
 
@@ -390,14 +369,32 @@ The public broadcasting endpoint is rate-limited:
 
 ```bash
 # 1. Install dependencies
-npm install
+pnpm install
 
-# 2. Configure environment
-cp .env.example .env  # → edit .env with your DB credentials (or DATABASE_URL)
+# 2. Create .env with your DATABASE_URL and JWT_SECRET
+# (see Environment Variables section above)
 
-# 3. Start the server (Database tables will be auto-created!)
-npm run dev
+# 3. Start the server (tables auto-created by Sequelize)
+pnpm run dev
 
-# 4. Visit Swagger API Documentation
+# 4. Visit Swagger docs
 open http://localhost:4000/api-docs
+
+# 5. (Optional) Seed default users
+pnpm run db:seed
 ```
+
+## 🚀 Deployment (Render)
+
+| Field          | Value            |
+| -------------- | ---------------- |
+| Build Command  | `pnpm install`   |
+| Start Command  | `node server.js` |
+| Root Directory | _(leave blank)_  |
+
+Set these environment variables in Render's dashboard:
+
+- `DATABASE_URL` — Neon DB connection string
+- `JWT_SECRET` — your secret key
+- `NODE_ENV` — `production`
+- `SERVER_URL` — your Render app URL (e.g., `https://your-app.onrender.com`)

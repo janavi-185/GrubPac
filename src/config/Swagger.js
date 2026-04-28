@@ -1,5 +1,6 @@
 const swaggerJSDoc = require('swagger-jsdoc');
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) {}
+
 
 const SERVER_URL = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 4000}`;
 

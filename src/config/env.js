@@ -1,20 +1,15 @@
-const dotenv = require('dotenv')
-const path = require('path')
-
-const dns = require('dns')
-dns.setServers(['8.8.8.8', '8.8.4.4']);
-
-dotenv.config()
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+try {
+  require('dotenv').config();
+} catch (e) {
+  // dotenv not available — env vars already injected by the platform (Render, etc.)
+}
 
 const getRequiredEnv = (key) => {
-  const value = process.env[key]
+  const value = process.env[key];
   if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`)
+    throw new Error(`Missing required environment variable: ${key}`);
   }
-  return value
-}
+  return value;
+};
 
-module.exports = {
-  getRequiredEnv
-}
+module.exports = { getRequiredEnv };
