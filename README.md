@@ -6,7 +6,7 @@ A backend API for educational content distribution — teachers upload subject-b
 
 📖 **API Docs (Swagger):** https://syncro-sb09.onrender.com/api-docs
 
-🖥️ **Frontend UI:** https://grubpac.vercel.app
+🖥️ **Frontend UI:** https://syncro-client.vercel.app
 
 ---
 
